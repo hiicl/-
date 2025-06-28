@@ -2,6 +2,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <capnp/serialize.h>
 #include <vector>
 
 struct GPUStatus {
@@ -52,7 +53,7 @@ private:
         return ParseStatus(result);
     }
     
-    std::vector<GPUStatus> ParseStatus(const capnp::Message& msg) {
+    std::vector<GPUStatus> ParseStatus(const capnp::FlatArrayMessageReader& msg) {
         std::vector<GPUStatus> status;
         // 解析capnp消息
         // ...

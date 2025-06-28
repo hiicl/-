@@ -31,7 +31,7 @@ CUresult __stdcall Hooked_cuMemAlloc(CUdeviceptr* dev_ptr, size_t byte_size) {
     }
 
     // 使用Cap'n Proto分配内存
-    auto mem_info = g_capnp_client->CUDAMemAlloc(byte_size);
+    auto mem_info = g_capnp_client->cudaMemAlloc(byte_size);
     uint64_t remote_handle = mem_info.getAddr();
 
     // 保存映射关系
@@ -66,7 +66,7 @@ CUresult __stdcall Hooked_cuMemFree(CUdeviceptr dptr) {
     }
 
     // 使用Cap'n Proto释放内存
-    g_capnp_client->CUDAMemFree(info->remote_handle);
+    g_capnp_client->cudaMemFree(info->remote_handle);
 
     // 移除映射
     g_memory_mapper.RemoveMapping(dptr);
@@ -94,7 +94,7 @@ CUresult __stdcall Hooked_cuMemcpyHtoD(CUdeviceptr dstDevice, const void* srcHos
     }
     
     // 使用Cap'n Proto传输数据
-    g_capnp_client->CUDAMemcpy(
+    g_capnp_client->cudaMemcpy(
         info->remote_handle, 
         reinterpret_cast<uint64_t>(srcHost), 
         ByteCount, 
@@ -115,7 +115,7 @@ CUresult __stdcall Hooked_cuMemcpyDtoH(void* dstHost, CUdeviceptr srcDevice, siz
         return CUDA_ERROR_UNKNOWN;
     }
     
-    g_capnp_client->CUDAMemcpy(
+    g_capnp_client->cudaMemcpy(
         reinterpret_cast<uint64_t>(dstHost),
         info->remote_handle,
         ByteCount,
@@ -149,7 +149,7 @@ CUresult __stdcall Hooked_cuLaunchKernel(
     uint64_t stream_handle = hStream ? 
         reinterpret_cast<uint64_t>(hStream) : 0;
 
-    auto response = g_capnp_client->CUDAKernelLaunch(
+    auto response = g_capnp_client->cudaKernelLaunch(
         "default-gpu",
         params_serialized,
         gridDimX, gridDimY, gridDimZ,

@@ -11,6 +11,7 @@
 #include <iostream>
 #include <stdexcept>
 
+
 using namespace std;
 
 CapnpClient::CapnpClient(const std::string& server_address) {
@@ -43,9 +44,8 @@ CapnpClient::~CapnpClient() {
 
 Path::Reader CapnpClient::requestPath(const std::string& src, const std::string& dst) {
     auto request = schedulerService_.castAs<Scheduler>().requestPathRequest();
-    auto params = request.initParams();
-    params.setSrc(src);
-    params.setDst(dst);
+    request.setSrc(src);
+    request.setDst(dst);
     auto response = request.send().wait(*waitScope_);
     return response.getPath();
 }
@@ -116,8 +116,8 @@ Ack::Reader CapnpClient::cudaInit() {
 
 CudaMemInfo::Reader CapnpClient::cudaMemAlloc(uint64_t size) {
     auto request = gpuService_.castAs<GpuService>().cudaMemAllocRequest();
-    auto req = request.initRequest();
-    req.setSize(size);
+    auto info = request.initInfo();
+    info.setSize(size);
     auto response = request.send().wait(*waitScope_);
     return response.getResult();
 }
@@ -135,8 +135,8 @@ Ack::Reader CapnpClient::cudaMemcpy(uint64_t dst, uint64_t src, uint64_t count, 
 
 Ack::Reader CapnpClient::cudaMemFree(uint64_t addr) {
     auto request = gpuService_.castAs<GpuService>().cudaMemFreeRequest();
-    auto req = request.initRequest();
-    req.setAddr(addr);
+    auto info = request.initInfo();
+    info.setAddr(addr);
     auto response = request.send().wait(*waitScope_);
     return response.getAck();
 }
@@ -151,16 +151,16 @@ StreamHandle::Reader CapnpClient::createCudaStream(uint32_t flags) {
 
 Ack::Reader CapnpClient::destroyCudaStream(uint64_t handle) {
     auto request = gpuService_.castAs<GpuService>().destroyCudaStreamRequest();
-    auto req = request.initRequest();
-    req.setHandle(handle);
+    auto h = request.initHandle();
+    h.setHandle(handle);
     auto response = request.send().wait(*waitScope_);
     return response.getAck();
 }
 
 Ack::Reader CapnpClient::synchronizeCudaStream(uint64_t handle) {
     auto request = gpuService_.castAs<GpuService>().synchronizeCudaStreamRequest();
-    auto params = request.initParams();
-    params.setHandle(handle);
+    auto h = request.initHandle();
+    h.setHandle(handle);
     auto response = request.send().wait(*waitScope_);
     return response.getAck();
 }
