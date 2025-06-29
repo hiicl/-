@@ -152,7 +152,7 @@ struct GpuStatus {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(fd9634edf885c4c7, 2, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(fd9634edf885c4c7, 3, 0)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -1224,6 +1224,8 @@ public:
 
   inline  ::int32_t getUtilization() const;
 
+  inline  ::int64_t getAvailableMemory() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1257,6 +1259,9 @@ public:
 
   inline  ::int32_t getUtilization();
   inline void setUtilization( ::int32_t value);
+
+  inline  ::int64_t getAvailableMemory();
+  inline void setAvailableMemory( ::int64_t value);
 
 private:
   ::capnp::_::StructBuilder _builder;
@@ -5647,6 +5652,20 @@ inline  ::int32_t GpuStatus::Builder::getUtilization() {
 }
 inline void GpuStatus::Builder::setUtilization( ::int32_t value) {
   _builder.setDataField< ::int32_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline  ::int64_t GpuStatus::Reader::getAvailableMemory() const {
+  return _reader.getDataField< ::int64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+
+inline  ::int64_t GpuStatus::Builder::getAvailableMemory() {
+  return _builder.getDataField< ::int64_t>(
+      ::capnp::bounded<2>() * ::capnp::ELEMENTS);
+}
+inline void GpuStatus::Builder::setAvailableMemory( ::int64_t value) {
+  _builder.setDataField< ::int64_t>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
