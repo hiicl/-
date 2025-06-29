@@ -2,23 +2,6 @@
 #include <easyhook.h>
 #include "hook_cuda.h"
 
-// 原始函数指针
-typedef CUresult (__stdcall *cuMemAlloc_t)(CUdeviceptr*, size_t);
-typedef CUresult (__stdcall *cuMemFree_t)(CUdeviceptr);
-typedef CUresult (__stdcall *cuMemcpyHtoD_t)(CUdeviceptr, const void*, size_t);
-typedef CUresult (__stdcall *cuMemcpyDtoH_t)(void*, CUdeviceptr, size_t);
-typedef CUresult (__stdcall *cuLaunchKernel_t)(CUfunction, 
-    unsigned int, unsigned int, unsigned int,
-    unsigned int, unsigned int, unsigned int,
-    unsigned int, CUstream, void**, void**);
-
-// 全局变量存储原始函数
-cuMemAlloc_t pOriginal_cuMemAlloc = nullptr;
-cuMemFree_t pOriginal_cuMemFree = nullptr;
-cuMemcpyHtoD_t pOriginal_cuMemcpyHtoD = nullptr;
-cuMemcpyDtoH_t pOriginal_cuMemcpyDtoH = nullptr;
-cuLaunchKernel_t pOriginal_cuLaunchKernel = nullptr;
-
 // DLL入口点
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
     return TRUE;

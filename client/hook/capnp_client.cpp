@@ -24,10 +24,12 @@ CapnpClient::CapnpClient(const std::string& server_address) {
         std::string host = server_address.substr(0, pos);
         uint16_t port = static_cast<uint16_t>(std::stoi(server_address.substr(pos + 1)));
 
-        auto address = ioContext_->provider->getNetwork().parseAddress(host, port).wait(*waitScope_);
-        kj::Own<kj::AsyncIoStream> connection = address->connect().wait(*waitScope_);
-
-        client_ = kj::heap<capnp::TwoPartyClient>(kj::mv(connection));
+    auto address = ioContext_->provider->getNetwork().parseAddress(host, port).wait(*waitScope_);
+    
+    // 修改开始：使用成员变量持有连接
+    stream_ = address->connect().wait(*waitScope_);
+    client_ = kj::heap<capnp::TwoPartyClient>(*stream_);
+    // 修改结束
         auto bootstrap = client_->bootstrap();
         gpuService_ = std::make_unique<GpuService::Client>(bootstrap.castAs<GpuService>());
         schedulerService_ = std::make_unique<Scheduler::Client>(bootstrap.castAs<Scheduler>());

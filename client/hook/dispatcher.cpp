@@ -3,9 +3,9 @@
 #include <yaml-cpp/yaml.h>
 
 // 添加节点
-void Dispatcher::AddNode(const RemoteNode& node) {
+void Dispatcher::AddNode(RemoteNode&& node) {
     std::lock_guard<std::mutex> lock(mutex);
-    nodes.push_back(node);
+    nodes.push_back(std::move(node));
 }
 
 // 获取所有节点
@@ -20,13 +20,18 @@ bool Dispatcher::LoadConfig(const std::string& config_path) {
         YAML::Node config = YAML::LoadFile(config_path);
         
         for (const auto& node : config["nodes"]) {
-            RemoteNode remote_node {
-                .id = node["id"].as<std::string>(),
-                .address = node["address"].as<std::string>(),
-                .roce_interface = node["roce_interface"].as<std::string>(""),
-                .priority = node["priority"].as<int>(50),
-                .available_memory = node["memory"].as<size_t>(0)
-            };
+    RemoteNode remote_node(
+        node["id"].as<std::string>(),
+        node["name"].as<std::string>(""),
+        node["address"].as<std::string>(),
+        node["roce_interface"].as<std::string>(""),
+        node["priority"].as<int>(50),
+        node["total_memory"].as<size_t>(0),
+        node["memory"].as<size_t>(0),
+        0.0,  // network_latency
+        0.0,  // cpu_usage
+        0.0   // gpu_utilization
+    );
             
             // 初始化Cap'n Proto客户端
             remote_node.capnp_client = std::make_unique<CapnpClient>(remote_node.address);

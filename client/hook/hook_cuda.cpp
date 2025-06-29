@@ -214,13 +214,18 @@ void InitializeHook() {
         std::string name = gpu.getName().cStr();
         int64_t totalMemory = gpu.getTotalMemory();
 
-        g_dispatcher.AddNode(RemoteNode{
-            .id = uuid,
-            .name = name,
-            .total_memory = static_cast<size_t>(totalMemory),
-            .available_memory = static_cast<size_t>(totalMemory),
-            .gpu_utilization = 0.0
-            });
+    g_dispatcher.AddNode(RemoteNode(
+        uuid, 
+        name, 
+        "",   // address
+        "",   // roce_interface
+        50,   // priority
+        static_cast<size_t>(totalMemory), 
+        static_cast<size_t>(totalMemory),
+        0.0,  // network_latency
+        0.0,  // cpu_usage
+        0.0   // gpu_utilization
+    ));
     }
     
     // 启动状态监控线程

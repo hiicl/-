@@ -51,6 +51,7 @@ public:
 private:
     std::unique_ptr<kj::AsyncIoContext> ioContext_;
     kj::WaitScope* waitScope_;
+    kj::Own<kj::AsyncIoStream> stream_;  // 持有连接的所有权
 
     kj::Own<capnp::TwoPartyClient> client_;  // ✅ 用 kj::Own 替代 std::unique_ptr
     std::unique_ptr<GpuService::Client> gpuService_;
