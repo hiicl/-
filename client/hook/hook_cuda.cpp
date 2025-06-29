@@ -1,10 +1,30 @@
 #include "hook_cuda.h"
 #include "dispatcher.h"
 #include "capnp_client.h"
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 #include <iostream>
 #include <mutex>
 #include <vector>
 #include <cstring>
+#include <sstream>
+#include <nlohmann/json.hpp>
+#include "gpu.capnp.h"
+using Direction = ::capnp::schemas::Direction_fc061cce9bf5918c;
+
+// 定义函数指针类型
+typedef CUresult (CUDAAPI *cuMemAlloc_t)(CUdeviceptr* dptr, size_t bytesize);
+typedef CUresult (CUDAAPI *cuMemFree_t)(CUdeviceptr dptr);
+typedef CUresult (CUDAAPI *cuMemcpyHtoD_t)(CUdeviceptr dstDevice, const void* srcHost, size_t ByteCount);
+typedef CUresult (CUDAAPI *cuMemcpyDtoH_t)(void* dstHost, CUdeviceptr srcDevice, size_t ByteCount);
+typedef CUresult (CUDAAPI *cuLaunchKernel_t)(
+    CUfunction f,
+    unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ,
+    unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ,
+    unsigned int sharedMemBytes, CUstream hStream,
+    void** kernelParams, void** extra);
+
+using json = nlohmann::json;
 
 // 全局内存映射器
 MemoryMapper g_memory_mapper;
@@ -98,7 +118,7 @@ CUresult __stdcall Hooked_cuMemcpyHtoD(CUdeviceptr dstDevice, const void* srcHos
         info->remote_handle, 
         reinterpret_cast<uint64_t>(srcHost), 
         ByteCount, 
-        Direction::hostToDevice
+        Direction::DEVICE_TO_HOST
     );
     
     return CUDA_SUCCESS;
@@ -119,7 +139,7 @@ CUresult __stdcall Hooked_cuMemcpyDtoH(void* dstHost, CUdeviceptr srcDevice, siz
         reinterpret_cast<uint64_t>(dstHost),
         info->remote_handle,
         ByteCount,
-        Direction::deviceToHost
+        Direction::DEVICE_TO_HOST
     );
     
     return CUDA_SUCCESS;
@@ -136,26 +156,25 @@ CUresult __stdcall Hooked_cuLaunchKernel(
     RemoteNode* node = g_dispatcher.GetDefaultNode();
     if (!node) return CUDA_ERROR_UNKNOWN;
 
-    // 序列化内核参数
-    std::vector<uint8_t> params_buffer;
+    // 序列化内核参数为JSON
+    json kernel_config;
+    kernel_config["gridDim"] = {gridDimX, gridDimY, gridDimZ};
+    kernel_config["blockDim"] = {blockDimX, blockDimY, blockDimZ};
+    kernel_config["sharedMemBytes"] = sharedMemBytes;
+    kernel_config["stream"] = reinterpret_cast<uint64_t>(hStream);
+    kernel_config["params"] = json::array();
+
     if (kernelParams) {
         for (int i = 0; kernelParams[i] != nullptr; i++) {
-            const uint8_t* param = static_cast<const uint8_t*>(kernelParams[i]);
-            params_buffer.insert(params_buffer.end(), param, param + sizeof(void*));
+            kernel_config["params"].push_back(reinterpret_cast<uint64_t>(kernelParams[i]));
         }
     }
-    std::string params_serialized(params_buffer.begin(), params_buffer.end());
-    
-    uint64_t stream_handle = hStream ? 
-        reinterpret_cast<uint64_t>(hStream) : 0;
 
+    std::string config_str = kernel_config.dump();
+    
     auto response = g_capnp_client->cudaKernelLaunch(
         "default-gpu",
-        params_serialized,
-        gridDimX, gridDimY, gridDimZ,
-        blockDimX, blockDimY, blockDimZ,
-        sharedMemBytes,
-        stream_handle
+        config_str
     );
     
     if (response.getExitCode() != 0) {
@@ -171,7 +190,7 @@ void StatusMonitorThread() {
         
         // 收集所有节点状态
         for (auto& node : g_dispatcher.GetNodes()) {
-            auto status = g_capnp_client->GetGPUStatus(node.id);
+            auto status = g_capnp_client->getGpuStatus(node.id);
             node.available_memory = status.getAvailableMemory();
             node.gpu_utilization = status.getUtilization();
         }
@@ -184,22 +203,24 @@ void InitializeHook() {
     g_capnp_client = std::make_unique<CapnpClient>("localhost:50051");
     
     // 初始化CUDA环境
-    g_capnp_client->CUDAInit();
+    g_capnp_client->cudaInit();
     
     // 初始化负载均衡调度器
-    auto gpuList = g_capnp_client->ListGPUs();
-    for (auto gpu : gpuList) {
+    auto gpuListReader = g_capnp_client->listGpus();      // GpuList::Reader
+    auto gpus = gpuListReader.getGpus();                 // ::capnp::List<GpuInfo>::Reader
+
+    for (auto gpu : gpus) {
         std::string uuid = gpu.getUuid().cStr();
         std::string name = gpu.getName().cStr();
         int64_t totalMemory = gpu.getTotalMemory();
-        
+
         g_dispatcher.AddNode(RemoteNode{
             .id = uuid,
             .name = name,
             .total_memory = static_cast<size_t>(totalMemory),
             .available_memory = static_cast<size_t>(totalMemory),
             .gpu_utilization = 0.0
-        });
+            });
     }
     
     // 启动状态监控线程

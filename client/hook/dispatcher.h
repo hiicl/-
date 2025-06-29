@@ -9,6 +9,7 @@
 // 远程节点信息
 struct RemoteNode {
     std::string id;
+    std::string name;  // 添加 name 字段
     std::string address;
     std::string roce_interface;
     int priority;
@@ -26,6 +27,12 @@ class Dispatcher {
     std::mutex mutex;
 
 public:
+    // 添加节点
+    void AddNode(const RemoteNode& node);
+    
+    // 获取所有节点
+    std::vector<RemoteNode>& GetNodes();
+    
     // 从YAML文件加载节点配置
     bool LoadConfig(const std::string& config_path);
     

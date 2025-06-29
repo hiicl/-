@@ -2,6 +2,18 @@
 #include <fstream>
 #include <yaml-cpp/yaml.h>
 
+// 添加节点
+void Dispatcher::AddNode(const RemoteNode& node) {
+    std::lock_guard<std::mutex> lock(mutex);
+    nodes.push_back(node);
+}
+
+// 获取所有节点
+std::vector<RemoteNode>& Dispatcher::GetNodes() {
+    std::lock_guard<std::mutex> lock(mutex);
+    return nodes;
+}
+
 bool Dispatcher::LoadConfig(const std::string& config_path) {
     std::lock_guard<std::mutex> lock(mutex);
     try {
